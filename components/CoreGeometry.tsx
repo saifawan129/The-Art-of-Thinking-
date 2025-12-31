@@ -1,6 +1,5 @@
 
 import React, { useRef, useEffect, useMemo, useState } from 'react';
-// Fix: Import ThreeEvent from @react-three/fiber
 import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -33,18 +32,6 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
   const { mouse } = useThree();
   
   // High-performance materials
-  const glassMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-    thickness: 0.8,
-    roughness: 0.05,
-    transmission: 0.95,
-    ior: 1.6,
-    color: '#ffffff',
-    transparent: true,
-    opacity: 0.4,
-    side: THREE.DoubleSide,
-    envMapIntensity: 1,
-  }), []);
-
   const iridescentMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#00ffff',
     metalness: 1,
@@ -144,10 +131,9 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
       if (!mesh) return;
       const { center } = faceMeshes[i];
       
-      // Determine explosion multiplier
       let mult = 1;
-      if (isDecon) mult = 2.8; // Deconstruction is more aggressive
-      else if (exploded) mult = 2.2; // Regular exploded view
+      if (isDecon) mult = 2.8; 
+      else if (exploded) mult = 2.2; 
       
       gsap.to(mesh.position, {
         x: center.x * mult,
@@ -157,7 +143,6 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
         ease: "power4.inOut"
       });
 
-      // Independent rotation for deconstruction
       gsap.to(mesh.rotation, {
         x: isDecon ? (Math.random() - 0.5) * Math.PI * 2 : 0,
         y: isDecon ? (Math.random() - 0.5) * Math.PI * 2 : 0,
@@ -167,7 +152,6 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
       });
     });
 
-    // Design Transitions
     if (icosahedronRef.current) {
       gsap.to(icosahedronRef.current.scale, {
         x: isShift ? 0 : (isDesign ? 1.1 : 1),
@@ -191,39 +175,33 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
 
   useFrame((state) => {
     if (mainGroupRef.current) {
-      // Mouse interaction
       const targetRotationX = mouse.y * 0.2;
       const targetRotationY = mouse.x * 0.2;
       mainGroupRef.current.rotation.x = THREE.MathUtils.lerp(mainGroupRef.current.rotation.x, targetRotationX, 0.1);
       mainGroupRef.current.rotation.y = THREE.MathUtils.lerp(mainGroupRef.current.rotation.y, targetRotationY, 0.1);
 
-      // Fast spin for Street mode
       if (activeSection === '04') {
         mainGroupRef.current.rotation.y += 0.08;
         mainGroupRef.current.rotation.z += 0.02;
       }
     }
 
-    // Floating deconstruction drift
     if (activeSection === '02') {
       faceRefs.current.forEach((mesh, i) => {
         if (!mesh) return;
         const time = state.clock.getElapsedTime();
         const { randomAxis } = faceMeshes[i];
-        
-        // Add subtle floating oscillation
         mesh.position.x += Math.sin(time * 0.5 + i) * 0.002;
         mesh.position.y += Math.cos(time * 0.4 + i) * 0.002;
         mesh.position.z += Math.sin(time * 0.3 + i) * 0.002;
-        
-        // Continuous independent rotation
         mesh.rotateOnAxis(randomAxis, 0.005);
       });
     }
   });
 
-  const handleFaceClick = (e: ThreeEvent<MouseEvent>, index: number) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>, index: number) => {
     e.stopPropagation();
+    onHover(`face_${index}`);
     
     // Geometry Data Properties
     const properties = [
@@ -245,6 +223,12 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
     });
   };
 
+  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    onHover(null);
+    onDetailSelect(null);
+  };
+
   return (
     <group ref={mainGroupRef}>
       {/* Dynamic Icosahedron Core */}
@@ -252,7 +236,7 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
         {faceMeshes.map((data, i) => {
           const isFaceHovered = hoveredPart === `face_${i}`;
           
-          let activeMat: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial = iridescentMat;
+          let activeMat: THREE.MeshStandardMaterial = iridescentMat;
           if (activeSection === '01') activeMat = greyBlackMat;
           else if (activeSection === '02') activeMat = deconMat;
           else if (activeSection === '03') activeMat = iridescentMat;
@@ -263,9 +247,9 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
               ref={el => faceRefs.current[i] = el!} 
               geometry={data.geometry} 
               position={[data.center.x, data.center.y, data.center.z]}
-              onPointerOver={(e) => { e.stopPropagation(); onHover(`face_${i}`); }}
-              onPointerOut={(e) => { e.stopPropagation(); onHover(null); }}
-              onClick={(e) => handleFaceClick(e, i)}
+              onPointerOver={(e) => handlePointerOver(e, i)}
+              onPointerOut={handlePointerOut}
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
             >
               <primitive object={activeMat} attach="material" />
               
@@ -292,7 +276,7 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({
       </group>
 
       {/* Structural Shift Mesh */}
-      <mesh ref={dodecahedronRef} scale={0}>
+      <mesh ref={dodecahedronRef} scale={0} onPointerOver={(e) => e.stopPropagation()} onPointerOut={(e) => e.stopPropagation()}>
         <dodecahedronGeometry args={[2, 0]} />
         <meshPhysicalMaterial 
           thickness={1.5} 
