@@ -8,7 +8,6 @@ import Overlay from './components/Overlay';
 import GraffitiLayer from './components/GraffitiLayer';
 import { AppState } from './types';
 
-// Custom Loader Component for Production Feel
 const Loader = () => {
   const { progress } = useProgress();
   return (
@@ -20,8 +19,8 @@ const Loader = () => {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className="text-white font-black italic tracking-widest uppercase mt-4 text-xs">
-          Loading_Core_{Math.round(progress)}%
+        <span className="text-white font-black italic tracking-widest uppercase mt-4 text-[10px]">
+          Initializing_Core_{Math.round(progress)}%
         </span>
       </div>
     </Html>
@@ -122,7 +121,6 @@ const App: React.FC = () => {
           minPolarAngle={Math.PI / 3}
           maxPolarAngle={Math.PI / 1.5}
           rotateSpeed={0.5}
-          makeDefault
         />
       </Canvas>
 
