@@ -1,12 +1,32 @@
 
 import React, { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, useProgress, Html } from '@react-three/drei';
 import gsap from 'gsap';
 import Scene from './components/Scene';
 import Overlay from './components/Overlay';
 import GraffitiLayer from './components/GraffitiLayer';
 import { AppState } from './types';
+
+// Custom Loader Component for Production Feel
+const Loader = () => {
+  const { progress } = useProgress();
+  return (
+    <Html center>
+      <div className="flex flex-col items-center justify-center w-screen h-screen bg-[#0066FF] z-[200]">
+        <div className="w-48 h-[2px] bg-white/20 relative overflow-hidden">
+          <div 
+            className="absolute top-0 left-0 h-full bg-white transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-white font-black italic tracking-widest uppercase mt-4 text-xs">
+          Loading_Core_{Math.round(progress)}%
+        </span>
+      </div>
+    </Html>
+  );
+};
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -16,7 +36,6 @@ const App: React.FC = () => {
     activeSection: null,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,12 +73,6 @@ const App: React.FC = () => {
     });
   }, [state.activeSection]);
 
-  // Initial loader cleanup
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleHover = useCallback((part: string | null) => {
     setState((prev) => ({ ...prev, hoveredPart: part }));
   }, []);
@@ -69,14 +82,6 @@ const App: React.FC = () => {
       ref={containerRef} 
       className="relative w-screen h-screen bg-[#0066FF] overflow-hidden transition-colors duration-1000 select-none"
     >
-      {/* Loading Screen */}
-      <div className={`fixed inset-0 z-[100] bg-[#0066FF] flex items-center justify-center transition-opacity duration-700 ${isLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-1 bg-white animate-pulse mb-4" />
-          <span className="text-white font-black italic tracking-widest uppercase">Initializing_Core</span>
-        </div>
-      </div>
-
       {/* Background Graffiti Layer */}
       <GraffitiLayer active={state.activeSection === '04'} />
 
@@ -84,7 +89,7 @@ const App: React.FC = () => {
       <Canvas 
         shadows 
         dpr={[1, 2]} 
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, stencil: false, depth: true }}
         onPointerDown={() => setState(p => ({ ...p, rotating: true }))}
         onPointerUp={() => setState(p => ({ ...p, rotating: false }))}
       >
@@ -93,7 +98,7 @@ const App: React.FC = () => {
         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
         <pointLight position={[-10, -10, -10]} intensity={0.5} />
         
-        <Suspense fallback={null}>
+        <Suspense fallback={<Loader />}>
           <Scene 
             exploded={state.exploded} 
             activeSection={state.activeSection}
@@ -117,6 +122,7 @@ const App: React.FC = () => {
           minPolarAngle={Math.PI / 3}
           maxPolarAngle={Math.PI / 1.5}
           rotateSpeed={0.5}
+          makeDefault
         />
       </Canvas>
 

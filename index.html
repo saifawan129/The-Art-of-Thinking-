@@ -3,8 +3,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Art of Thinking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>The Art of Thinking | Core Geometry</title>
+    <meta name="description" content="A high-end, cinematic 3D interactive experience exploring the complexity of thought forms." />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -14,9 +15,17 @@
         overflow: hidden;
         background-color: #0066FF;
         font-family: 'Inter', sans-serif;
+        touch-action: none;
       }
       canvas {
         display: block;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     </style>
   <script type="importmap">
@@ -25,10 +34,13 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
     "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
     "three": "https://esm.sh/three@^0.182.0",
     "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.5.0",
-    "gsap": "https://esm.sh/gsap@^3.14.2"
+    "gsap": "https://esm.sh/gsap@^3.14.2",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
