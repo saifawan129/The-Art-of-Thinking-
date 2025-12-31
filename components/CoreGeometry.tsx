@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
@@ -15,38 +15,33 @@ interface CoreGeometryProps {
 const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, hoveredPart, onHover, onClick }) => {
   const mainGroupRef = useRef<THREE.Group>(null);
   const icosahedronRef = useRef<THREE.Group>(null);
-  const dodecahedronRef = useRef<THREE.Group>(null);
+  const dodecahedronRef = useRef<THREE.Mesh>(null);
+  const { mouse } = useThree();
   
-  // Materials
+  // High-performance materials
   const glassMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-    thickness: 0.5,
-    roughness: 0,
-    transmission: 0.9,
-    ior: 1.5,
+    thickness: 0.8,
+    roughness: 0.05,
+    transmission: 0.95,
+    ior: 1.6,
     color: '#ffffff',
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.4,
     side: THREE.DoubleSide,
+    envMapIntensity: 1,
   }), []);
 
   const iridescentMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#00ffff',
     metalness: 1,
-    roughness: 0.1,
+    roughness: 0.05,
     emissive: '#0044ff',
-    emissiveIntensity: 0.5,
+    emissiveIntensity: 0.6,
   }), []);
 
-  const wireframeMat = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#ffffff',
-    wireframe: true,
-    transparent: true,
-    opacity: 0.8,
-  }), []);
-
-  // Generate Icosahedron faces for explode view
+  // Pre-generate geometry faces
   const faceMeshes = useMemo(() => {
-    const geo = new THREE.IcosahedronGeometry(2, 0);
+    const geo = new THREE.IcosahedronGeometry(2.2, 0);
     const posAttr = geo.getAttribute('position');
     const meshes: { geometry: THREE.BufferGeometry, center: THREE.Vector3 }[] = [];
     
@@ -55,14 +50,8 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
       const v2 = new THREE.Vector3().fromBufferAttribute(posAttr, i + 1);
       const v3 = new THREE.Vector3().fromBufferAttribute(posAttr, i + 2);
       
-      const center = new THREE.Vector3()
-        .add(v1).add(v2).add(v3)
-        .divideScalar(3);
-      
-      // Move vertices to be relative to center for easier rotation/explosion
-      v1.sub(center);
-      v2.sub(center);
-      v3.sub(center);
+      const center = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
+      v1.sub(center); v2.sub(center); v3.sub(center);
       
       const geometry = new THREE.BufferGeometry().setFromPoints([v1, v2, v3]);
       geometry.computeVertexNormals();
@@ -71,85 +60,87 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     return meshes;
   }, []);
 
-  // Refs for the individual faces
   const faceRefs = useRef<THREE.Mesh[]>([]);
 
   useEffect(() => {
-    // Initial entrance
     if (mainGroupRef.current) {
       gsap.from(mainGroupRef.current.scale, {
         x: 0, y: 0, z: 0,
-        duration: 1.5,
-        ease: "elastic.out(1, 0.5)"
+        duration: 2,
+        ease: "elastic.out(1, 0.4)"
       });
     }
   }, []);
 
   useEffect(() => {
-    const is01 = activeSection === '01'; // Structural Shift
-    const is02 = activeSection === '02'; // Deconstruction
-    const is03 = activeSection === '03'; // Design & Color
-    const is04 = activeSection === '04'; // Graffiti & Style
+    const isShift = activeSection === '01';
+    const isDecon = activeSection === '02';
+    const isDesign = activeSection === '03';
+    const isStreet = activeSection === '04';
 
-    // Morph to Dodecahedron (01)
+    // Dodecahedron Morph
     if (dodecahedronRef.current) {
       gsap.to(dodecahedronRef.current.scale, {
-        x: is01 ? 1.2 : 0,
-        y: is01 ? 1.2 : 0,
-        z: is01 ? 1.2 : 0,
+        x: isShift ? 1.3 : 0,
+        y: isShift ? 1.3 : 0,
+        z: isShift ? 1.3 : 0,
         duration: 0.8,
         ease: "expo.out"
       });
-      gsap.to(dodecahedronRef.current.rotation, {
-        y: is01 ? Math.PI : 0,
-        duration: 0.8
-      });
     }
 
-    // Explode effect (02)
+    // Explode Transitions
     faceRefs.current.forEach((mesh, i) => {
-      if (mesh) {
-        const { center } = faceMeshes[i];
-        const multiplier = is02 || exploded ? 2 : 1;
-        gsap.to(mesh.position, {
-          x: center.x * multiplier,
-          y: center.y * multiplier,
-          z: center.z * multiplier,
-          duration: 0.8,
-          ease: "back.out(1.7)"
-        });
-        gsap.to(mesh.rotation, {
-          x: is02 ? Math.random() * Math.PI : 0,
-          y: is02 ? Math.random() * Math.PI : 0,
-          duration: 0.8
-        });
-      }
+      if (!mesh) return;
+      const { center } = faceMeshes[i];
+      const mult = isDecon || exploded ? 2.2 : 1;
+      
+      gsap.to(mesh.position, {
+        x: center.x * mult,
+        y: center.y * mult,
+        z: center.z * mult,
+        duration: 1,
+        ease: "power4.out"
+      });
+
+      gsap.to(mesh.rotation, {
+        x: isDecon ? (Math.random() - 0.5) * Math.PI : 0,
+        y: isDecon ? (Math.random() - 0.5) * Math.PI : 0,
+        duration: 1.2
+      });
     });
 
-    // Material Swap (03)
+    // Design Transitions
     if (icosahedronRef.current) {
       gsap.to(icosahedronRef.current.scale, {
-        x: is01 ? 0 : (is03 ? 1.1 : 1),
-        y: is01 ? 0 : (is03 ? 1.1 : 1),
-        z: is01 ? 0 : (is03 ? 1.1 : 1),
-        duration: 0.5
+        x: isShift ? 0 : (isDesign ? 1.1 : 1),
+        y: isShift ? 0 : (isDesign ? 1.1 : 1),
+        z: isShift ? 0 : (isDesign ? 1.1 : 1),
+        duration: 0.6,
+        ease: "back.out(1.7)"
       });
     }
-
-    // Graffiti Spin (04)
-    if (is04 && mainGroupRef.current) {
-      gsap.to(mainGroupRef.current.rotation, {
-        y: mainGroupRef.current.rotation.y + Math.PI * 4,
-        duration: 2,
-        ease: "power4.inOut"
-      });
-    }
-
   }, [activeSection, exploded, faceMeshes]);
+
+  useFrame((state) => {
+    if (mainGroupRef.current) {
+      // Mouse interaction
+      const targetRotationX = mouse.y * 0.2;
+      const targetRotationY = mouse.x * 0.2;
+      mainGroupRef.current.rotation.x = THREE.MathUtils.lerp(mainGroupRef.current.rotation.x, targetRotationX, 0.1);
+      mainGroupRef.current.rotation.y = THREE.MathUtils.lerp(mainGroupRef.current.rotation.y, targetRotationY, 0.1);
+
+      // Fast spin for Street mode
+      if (activeSection === '04') {
+        mainGroupRef.current.rotation.y += 0.08;
+        mainGroupRef.current.rotation.z += 0.02;
+      }
+    }
+  });
 
   return (
     <group ref={mainGroupRef}>
-      {/* Central Icosahedron Container */}
+      {/* Dynamic Icosahedron Core */}
       <group ref={icosahedronRef}>
         {faceMeshes.map((data, i) => (
           <mesh 
@@ -163,7 +154,7 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
           >
             <primitive object={activeSection === '03' ? iridescentMat : glassMat} attach="material" />
             
-            {/* Edge highlights */}
+            {/* Structural Edge Overlay */}
             <mesh geometry={data.geometry}>
               <meshBasicMaterial 
                 color={activeSection === '04' ? "#ff00ff" : "#ffffff"} 
@@ -173,27 +164,27 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
               />
             </mesh>
 
-            {/* Digital Graffiti Texture (Simulation via colored planes or decals) */}
-            {activeSection === '04' && i % 3 === 0 && (
-              <mesh position={[0, 0, 0.01]} scale={0.5}>
+            {/* Street Mode Decals */}
+            {activeSection === '04' && i % 4 === 0 && (
+              <mesh position={[0, 0, 0.02]} scale={0.6}>
                 <planeGeometry args={[1, 1]} />
-                <meshBasicMaterial color="#ffff00" transparent opacity={0.8} />
+                <meshBasicMaterial color="#ffff00" transparent opacity={0.9} />
               </mesh>
             )}
           </mesh>
         ))}
       </group>
 
-      {/* Hidden Dodecahedron for morphing */}
+      {/* Structural Shift Mesh */}
       <mesh ref={dodecahedronRef} scale={0}>
         <dodecahedronGeometry args={[2, 0]} />
         <meshPhysicalMaterial 
-          thickness={1} 
-          transmission={0.8} 
+          thickness={1.5} 
+          transmission={0.9} 
           roughness={0} 
           color="#ffff00" 
           emissive="#ffff00" 
-          emissiveIntensity={0.5} 
+          emissiveIntensity={0.8} 
         />
         <mesh geometry={new THREE.DodecahedronGeometry(2, 0)}>
           <meshBasicMaterial color="#ffffff" wireframe />

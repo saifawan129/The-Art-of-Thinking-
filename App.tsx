@@ -6,16 +6,17 @@ import gsap from 'gsap';
 import Scene from './components/Scene';
 import Overlay from './components/Overlay';
 import GraffitiLayer from './components/GraffitiLayer';
-import { SkateboardState } from './types';
+import { AppState } from './types';
 
 const App: React.FC = () => {
-  const [state, setState] = useState<SkateboardState>({
+  const [state, setState] = useState<AppState>({
     exploded: false,
     hoveredPart: null,
     rotating: false,
     activeSection: null,
   });
 
+  const [isLoading, setIsLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,44 +30,66 @@ const App: React.FC = () => {
 
   const setActiveSection = useCallback((id: string) => {
     setState((prev) => {
-      // If user clicks DECONSTRUCTION, trigger exploded view automatically
-      const shouldExplode = id === '02';
+      const isDeconstruction = id === '02';
       return { 
         ...prev, 
-        activeSection: id,
-        exploded: shouldExplode
+        activeSection: id === prev.activeSection ? null : id,
+        exploded: isDeconstruction
       };
     });
   }, []);
 
-  // Global Theme Transition
+  // Theme transitions
   useEffect(() => {
     if (!containerRef.current) return;
 
-    let bgColor = "#0066FF"; // Default Blue
-    if (state.activeSection === '03') bgColor = "#121212"; // Deep Charcoal
-    if (state.activeSection === '04') bgColor = "#0044CC"; // Deep Street Blue
+    let bgColor = "#0066FF"; // Default Primary Blue
+    if (state.activeSection === '03') bgColor = "#0A0A0A"; // Deep Charcoal
+    if (state.activeSection === '04') bgColor = "#0044CC"; // Street Blue
 
     gsap.to(containerRef.current, {
       backgroundColor: bgColor,
-      duration: 1,
-      ease: "power2.inOut"
+      duration: 1.2,
+      ease: "power3.inOut"
     });
   }, [state.activeSection]);
+
+  // Initial loader cleanup
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleHover = useCallback((part: string | null) => {
     setState((prev) => ({ ...prev, hoveredPart: part }));
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-screen h-screen bg-[#0066FF] overflow-hidden transition-colors duration-1000">
+    <div 
+      ref={containerRef} 
+      className="relative w-screen h-screen bg-[#0066FF] overflow-hidden transition-colors duration-1000 select-none"
+    >
+      {/* Loading Screen */}
+      <div className={`fixed inset-0 z-[100] bg-[#0066FF] flex items-center justify-center transition-opacity duration-700 ${isLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-1 bg-white animate-pulse mb-4" />
+          <span className="text-white font-black italic tracking-widest uppercase">Initializing_Core</span>
+        </div>
+      </div>
+
       {/* Background Graffiti Layer */}
       <GraffitiLayer active={state.activeSection === '04'} />
 
-      {/* 3D Scene Layer */}
-      <Canvas shadows dpr={[1, 2]}>
+      {/* 3D Scene */}
+      <Canvas 
+        shadows 
+        dpr={[1, 2]} 
+        gl={{ antialias: true, alpha: true }}
+        onPointerDown={() => setState(p => ({ ...p, rotating: true }))}
+        onPointerUp={() => setState(p => ({ ...p, rotating: false }))}
+      >
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={45} />
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.4} />
         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
         <pointLight position={[-10, -10, -10]} intensity={0.5} />
         
@@ -81,10 +104,10 @@ const App: React.FC = () => {
           <Environment preset="city" />
           <ContactShadows 
             position={[0, -2.5, 0]} 
-            opacity={0.4} 
-            scale={10} 
-            blur={2} 
-            far={4.5} 
+            opacity={0.3} 
+            scale={12} 
+            blur={2.5} 
+            far={5} 
           />
         </Suspense>
 
@@ -93,12 +116,11 @@ const App: React.FC = () => {
           enableZoom={false} 
           minPolarAngle={Math.PI / 3}
           maxPolarAngle={Math.PI / 1.5}
-          onStart={() => setState(prev => ({ ...prev, rotating: true }))}
-          onEnd={() => setState(prev => ({ ...prev, rotating: false }))}
+          rotateSpeed={0.5}
         />
       </Canvas>
 
-      {/* UI Overlay Layer */}
+      {/* Interface Overlay */}
       <Overlay 
         state={state} 
         menuOpen={menuOpen} 
