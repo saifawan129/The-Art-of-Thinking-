@@ -12,10 +12,11 @@ interface OverlayProps {
 
 const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplode, setActiveSection }) => {
   const getSectionColor = () => {
+    if (state.activeSection === '01') return 'text-cyan-400';
     if (state.activeSection === '02') return 'text-black'; // High contrast on yellow
     if (state.activeSection === '03') return 'text-orange-400';
     if (state.activeSection === '04') return 'text-pink-500';
-    return 'text-cyan-400';
+    return 'text-orange-400'; // Default: Design & Color Spectrum
   };
 
   const currentItem = MENU_ITEMS.find(m => m.id === state.activeSection);
@@ -65,7 +66,7 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
                   ? 'bg-black text-[#FFD700] font-black'
                   : state.activeSection === '03' 
                     ? 'bg-orange-400 text-black font-black' 
-                    : 'bg-cyan-400 text-black font-black'
+                    : 'bg-orange-400 text-black font-black'
             }`}
           >
             {getBannerText()}
@@ -77,7 +78,7 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
       <footer className="flex flex-col md:flex-row justify-between items-end gap-10 pointer-events-auto">
         <div className="flex flex-col gap-4 max-w-md">
           <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full animate-pulse ${state.activeSection ? 'bg-green-400' : (isDeconMode ? 'bg-black' : 'bg-cyan-400')}`} />
+            <div className={`w-3 h-3 rounded-full animate-pulse ${state.activeSection ? 'bg-green-400' : (isDeconMode ? 'bg-black' : 'bg-orange-400')}`} />
             <h3 className={`text-lg font-black uppercase tracking-widest ${getSectionColor()}`}>
               {state.activeSection ? `Node_v${state.activeSection}` : 'Awaiting_Input'}
             </h3>
@@ -90,7 +91,7 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
           <button 
             onClick={onExplode}
             className={`self-start px-8 py-3 font-black uppercase tracking-tighter transition-all duration-300 transform hover:-translate-y-1 active:scale-95 ${
-              state.exploded ? 'bg-pink-500 text-white' : (isDeconMode ? 'bg-black text-[#FFD700] hover:bg-black/80' : 'bg-white text-black hover:bg-cyan-400')
+              state.exploded ? 'bg-pink-500 text-white' : (isDeconMode ? 'bg-black text-[#FFD700] hover:bg-black/80' : 'bg-white text-black hover:text-orange-400')
             }`}
           >
             {state.exploded ? 'Collapse Core' : 'Explode View'}
@@ -109,12 +110,12 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
                 SYS_{item.id}
               </span>
               <span className={`text-sm md:text-base font-black italic uppercase transition-all duration-300 ${
-                state.activeSection === item.id ? getSectionColor() : (isDeconMode ? 'text-black/60 group-hover:text-black' : 'text-white/60 group-hover:text-cyan-400')
+                state.activeSection === item.id ? getSectionColor() : (isDeconMode ? 'text-black/60 group-hover:text-black' : 'text-white/60 group-hover:text-orange-400')
               }`}>
                 {item.label}
               </span>
               <div className={`h-[2px] mt-2 transition-all duration-500 ${
-                state.activeSection === item.id ? (isDeconMode ? 'w-full bg-black' : 'w-full bg-white') : (isDeconMode ? 'w-0 bg-black/30 group-hover:w-full' : 'w-0 bg-cyan-400 group-hover:w-full')
+                state.activeSection === item.id ? (isDeconMode ? 'w-full bg-black' : 'w-full bg-white') : (isDeconMode ? 'w-0 bg-black/30 group-hover:w-full' : 'w-0 bg-orange-400 group-hover:w-full')
               }`} />
             </button>
           ))}
@@ -122,10 +123,10 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
       </footer>
 
       {/* Fullscreen Navigation Overlay */}
-      <div className={`fixed inset-0 bg-[#0066FF] z-50 transition-all duration-700 pointer-events-auto flex flex-col items-center justify-center gap-8 ${menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+      <div className={`fixed inset-0 bg-[#0A0A0A] z-50 transition-all duration-700 pointer-events-auto flex flex-col items-center justify-center gap-8 ${menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <button 
           onClick={() => setMenuOpen(false)}
-          className="absolute top-12 right-12 text-2xl font-black hover:text-cyan-400 transition-colors uppercase tracking-widest text-white"
+          className="absolute top-12 right-12 text-2xl font-black hover:text-orange-400 transition-colors uppercase tracking-widest text-white"
         >
           Close [Esc]
         </button>
@@ -134,7 +135,7 @@ const Overlay: React.FC<OverlayProps> = ({ state, menuOpen, setMenuOpen, onExplo
             <a 
               key={i} 
               href="#" 
-              className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter hover:text-cyan-400 transition-all hover:skew-x-[-8deg] hover:scale-110 text-white"
+              className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter hover:text-orange-400 transition-all hover:skew-x-[-8deg] hover:scale-110 text-white"
               onClick={(e) => { e.preventDefault(); setMenuOpen(false); }}
             >
               {item}

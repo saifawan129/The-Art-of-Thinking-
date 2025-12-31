@@ -12,10 +12,10 @@ const Loader = () => {
   const { progress } = useProgress();
   return (
     <Html center>
-      <div className="flex flex-col items-center justify-center w-screen h-screen bg-[#0066FF] z-[200]">
+      <div className="flex flex-col items-center justify-center w-screen h-screen bg-[#0A0A0A] z-[200]">
         <div className="w-48 h-[2px] bg-white/20 relative overflow-hidden">
           <div 
-            className="absolute top-0 left-0 h-full bg-white transition-all duration-300 ease-out"
+            className="absolute top-0 left-0 h-full bg-orange-400 transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -33,6 +33,7 @@ const App: React.FC = () => {
     hoveredPart: null,
     rotating: false,
     activeSection: null,
+    selectedDetail: null,
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,7 +43,8 @@ const App: React.FC = () => {
     setState((prev) => ({ 
       ...prev, 
       exploded: !prev.exploded,
-      activeSection: prev.exploded ? null : prev.activeSection 
+      activeSection: prev.exploded ? null : prev.activeSection,
+      selectedDetail: null // Clear detail on explode
     }));
   }, []);
 
@@ -52,16 +54,22 @@ const App: React.FC = () => {
       return { 
         ...prev, 
         activeSection: id === prev.activeSection ? null : id,
-        exploded: isDeconstruction
+        exploded: isDeconstruction,
+        selectedDetail: null
       };
     });
+  }, []);
+
+  const handleDetailSelect = useCallback((detail: AppState['selectedDetail']) => {
+    setState(prev => ({ ...prev, selectedDetail: detail }));
   }, []);
 
   // Theme transitions
   useEffect(() => {
     if (!containerRef.current) return;
 
-    let bgColor = "#0066FF"; // Default Primary Blue
+    let bgColor = "#0A0A0A"; // Default: Design & Color Spectrum
+    if (state.activeSection === '01') bgColor = "#0066FF"; // Structural Blue
     if (state.activeSection === '02') bgColor = "#FFD700"; // Vibrant Gold/Yellow for Deconstruction
     if (state.activeSection === '03') bgColor = "#0A0A0A"; // Deep Charcoal
     if (state.activeSection === '04') bgColor = "#0044CC"; // Street Blue
@@ -80,7 +88,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef} 
-      className="relative w-screen h-screen bg-[#0066FF] overflow-hidden transition-colors duration-1000 select-none"
+      className="relative w-screen h-screen bg-[#0A0A0A] overflow-hidden transition-colors duration-1000 select-none"
     >
       {/* Background Graffiti Layer */}
       <GraffitiLayer active={state.activeSection === '04'} />
@@ -92,6 +100,7 @@ const App: React.FC = () => {
         gl={{ antialias: true, alpha: true, stencil: false, depth: true }}
         onPointerDown={() => setState(p => ({ ...p, rotating: true }))}
         onPointerUp={() => setState(p => ({ ...p, rotating: false }))}
+        onPointerMissed={() => setState(p => ({ ...p, selectedDetail: null }))}
       >
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={45} />
         <ambientLight intensity={0.4} />
@@ -103,7 +112,9 @@ const App: React.FC = () => {
             exploded={state.exploded} 
             activeSection={state.activeSection}
             hoveredPart={state.hoveredPart} 
+            selectedDetail={state.selectedDetail}
             onHover={handleHover}
+            onDetailSelect={handleDetailSelect}
             onClick={toggleExplode}
           />
           <Environment preset="city" />

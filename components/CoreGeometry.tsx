@@ -1,21 +1,35 @@
 
-import React, { useRef, useEffect, useMemo } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
+// Fix: Import ThreeEvent from @react-three/fiber
+import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
+import { AppState } from '../types';
 
 interface CoreGeometryProps {
   exploded: boolean;
   activeSection: string | null;
   hoveredPart: string | null;
+  selectedDetail: AppState['selectedDetail'];
   onHover: (part: string | null) => void;
+  onDetailSelect: (detail: AppState['selectedDetail']) => void;
   onClick: () => void;
 }
 
-const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, hoveredPart, onHover, onClick }) => {
+const CoreGeometry: React.FC<CoreGeometryProps> = ({ 
+  exploded, 
+  activeSection, 
+  hoveredPart, 
+  selectedDetail,
+  onHover, 
+  onDetailSelect,
+  onClick 
+}) => {
   const mainGroupRef = useRef<THREE.Group>(null);
   const icosahedronRef = useRef<THREE.Group>(null);
   const dodecahedronRef = useRef<THREE.Mesh>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
   const { mouse } = useThree();
   
   // High-performance materials
@@ -47,6 +61,14 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     emissiveIntensity: 0.5,
   }), []);
 
+  const greyBlackMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#1a1a1a', // Greyish Black
+    metalness: 0.9,
+    roughness: 0.1,
+    emissive: '#050505',
+    emissiveIntensity: 0.2,
+  }), []);
+
   // Pre-generate geometry faces
   const faceMeshes = useMemo(() => {
     const geo = new THREE.IcosahedronGeometry(2.2, 0);
@@ -75,6 +97,7 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
 
   const faceRefs = useRef<THREE.Mesh[]>([]);
 
+  // Entrance animation
   useEffect(() => {
     if (mainGroupRef.current) {
       gsap.from(mainGroupRef.current.scale, {
@@ -84,6 +107,20 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
       });
     }
   }, []);
+
+  // Hover expansion effect
+  useEffect(() => {
+    if (mainGroupRef.current) {
+      const isHovered = hoveredPart !== null;
+      gsap.to(mainGroupRef.current.scale, {
+        x: isHovered ? 1.08 : 1.0,
+        y: isHovered ? 1.08 : 1.0,
+        z: isHovered ? 1.08 : 1.0,
+        duration: 0.5,
+        ease: "power2.out"
+      });
+    }
+  }, [hoveredPart]);
 
   useEffect(() => {
     const isShift = activeSection === '01';
@@ -142,6 +179,16 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     }
   }, [activeSection, exploded, faceMeshes]);
 
+  // Handle cinematic label animation
+  useEffect(() => {
+    if (selectedDetail && labelRef.current) {
+      gsap.fromTo(labelRef.current, 
+        { opacity: 0, y: 20, scale: 0.8, filter: 'blur(10px)' },
+        { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.8, ease: "expo.out" }
+      );
+    }
+  }, [selectedDetail]);
+
   useFrame((state) => {
     if (mainGroupRef.current) {
       // Mouse interaction
@@ -175,6 +222,29 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     }
   });
 
+  const handleFaceClick = (e: ThreeEvent<MouseEvent>, index: number) => {
+    e.stopPropagation();
+    
+    // Geometry Data Properties
+    const properties = [
+      { title: "VERTICES", value: activeSection === '01' ? "20" : "12" },
+      { title: "EDGES", value: "30" },
+      { title: "FACES", value: activeSection === '01' ? "12" : "20" },
+      { title: "EULER", value: "χ = 2" },
+      { title: "SYMMETRY", value: "Icosahedral" },
+      { title: "GOLDEN", value: "φ : 1" }
+    ];
+
+    const randomProp = properties[Math.floor(Math.random() * properties.length)];
+    const pos: [number, number, number] = [e.point.x, e.point.y, e.point.z];
+    
+    onDetailSelect({
+      title: randomProp.title,
+      value: randomProp.value,
+      position: pos
+    });
+  };
+
   return (
     <group ref={mainGroupRef}>
       {/* Dynamic Icosahedron Core */}
@@ -182,9 +252,9 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
         {faceMeshes.map((data, i) => {
           const isFaceHovered = hoveredPart === `face_${i}`;
           
-          // FIX: Explicitly typing activeMat to avoid 'MeshStandardMaterial is not assignable to MeshPhysicalMaterial' errors.
-          let activeMat: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial = glassMat;
-          if (activeSection === '02') activeMat = deconMat;
+          let activeMat: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial = iridescentMat;
+          if (activeSection === '01') activeMat = greyBlackMat;
+          else if (activeSection === '02') activeMat = deconMat;
           else if (activeSection === '03') activeMat = iridescentMat;
 
           return (
@@ -193,9 +263,9 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
               ref={el => faceRefs.current[i] = el!} 
               geometry={data.geometry} 
               position={[data.center.x, data.center.y, data.center.z]}
-              onPointerOver={() => onHover(`face_${i}`)}
-              onPointerOut={() => onHover(null)}
-              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              onPointerOver={(e) => { e.stopPropagation(); onHover(`face_${i}`); }}
+              onPointerOut={(e) => { e.stopPropagation(); onHover(null); }}
+              onClick={(e) => handleFaceClick(e, i)}
             >
               <primitive object={activeMat} attach="material" />
               
@@ -205,7 +275,7 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
                   color={isFaceHovered ? "#ffffff" : (activeSection === '02' ? "#000000" : activeSection === '04' ? "#ff00ff" : "#ffffff")} 
                   wireframe 
                   transparent 
-                  opacity={isFaceHovered ? 1.0 : (activeSection === '01' ? 1 : 0.4)} 
+                  opacity={isFaceHovered ? 1.0 : (activeSection === '01' ? 1 : 0.6)} 
                 />
               </mesh>
 
@@ -226,16 +296,40 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
         <dodecahedronGeometry args={[2, 0]} />
         <meshPhysicalMaterial 
           thickness={1.5} 
-          transmission={0.9} 
-          roughness={0} 
-          color="#ffff00" 
-          emissive="#ffff00" 
-          emissiveIntensity={0.8} 
+          transmission={0} 
+          roughness={0.1} 
+          metalness={0.9}
+          color="#1a1a1a" // Greyish Black
+          emissive="#000000" 
+          emissiveIntensity={0.5} 
         />
         <mesh geometry={new THREE.DodecahedronGeometry(2, 0)}>
           <meshBasicMaterial color="#ffffff" wireframe />
         </mesh>
       </mesh>
+
+      {/* Cinematic Detail Label */}
+      {selectedDetail && (
+        <Html position={selectedDetail.position} center distanceFactor={10}>
+          <div ref={labelRef} className="pointer-events-none select-none flex flex-col items-center">
+            {/* Connecting Line */}
+            <div className="w-[1px] h-16 bg-gradient-to-t from-white to-transparent" />
+            
+            {/* Detail Card */}
+            <div className="bg-black/80 backdrop-blur-xl border border-white/20 p-4 min-w-[120px] skew-x-[-12deg] shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+              <span className="block text-[8px] font-black tracking-[0.3em] text-cyan-400 mb-1">
+                PROPERTY_INTEL
+              </span>
+              <h4 className="text-white text-xs font-black tracking-widest uppercase opacity-60">
+                {selectedDetail.title}
+              </h4>
+              <p className="text-white text-2xl font-black italic tracking-tighter">
+                {selectedDetail.value}
+              </p>
+            </div>
+          </div>
+        </Html>
+      )}
     </group>
   );
 };

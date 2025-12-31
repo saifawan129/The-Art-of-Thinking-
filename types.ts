@@ -7,6 +7,11 @@ export interface AppState {
   hoveredPart: string | null;
   rotating: boolean;
   activeSection: string | null;
+  selectedDetail: {
+    title: string;
+    value: string;
+    position: [number, number, number];
+  } | null;
 }
 
 /**
