@@ -62,6 +62,7 @@ const App: React.FC = () => {
     if (!containerRef.current) return;
 
     let bgColor = "#0066FF"; // Default Primary Blue
+    if (state.activeSection === '02') bgColor = "#FFD700"; // Vibrant Gold/Yellow for Deconstruction
     if (state.activeSection === '03') bgColor = "#0A0A0A"; // Deep Charcoal
     if (state.activeSection === '04') bgColor = "#0044CC"; // Street Blue
 

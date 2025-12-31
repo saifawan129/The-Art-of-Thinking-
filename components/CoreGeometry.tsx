@@ -39,11 +39,19 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     emissiveIntensity: 0.6,
   }), []);
 
+  const deconMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#ff00ff', // Vibrant Magenta
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: '#440044',
+    emissiveIntensity: 0.5,
+  }), []);
+
   // Pre-generate geometry faces
   const faceMeshes = useMemo(() => {
     const geo = new THREE.IcosahedronGeometry(2.2, 0);
     const posAttr = geo.getAttribute('position');
-    const meshes: { geometry: THREE.BufferGeometry, center: THREE.Vector3 }[] = [];
+    const meshes: { geometry: THREE.BufferGeometry, center: THREE.Vector3, randomAxis: THREE.Vector3 }[] = [];
     
     for (let i = 0; i < posAttr.count; i += 3) {
       const v1 = new THREE.Vector3().fromBufferAttribute(posAttr, i);
@@ -55,7 +63,12 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
       
       const geometry = new THREE.BufferGeometry().setFromPoints([v1, v2, v3]);
       geometry.computeVertexNormals();
-      meshes.push({ geometry, center });
+      
+      meshes.push({ 
+        geometry, 
+        center, 
+        randomAxis: new THREE.Vector3(Math.random(), Math.random(), Math.random()).normalize() 
+      });
     }
     return meshes;
   }, []);
@@ -93,20 +106,27 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
     faceRefs.current.forEach((mesh, i) => {
       if (!mesh) return;
       const { center } = faceMeshes[i];
-      const mult = isDecon || exploded ? 2.2 : 1;
+      
+      // Determine explosion multiplier
+      let mult = 1;
+      if (isDecon) mult = 2.8; // Deconstruction is more aggressive
+      else if (exploded) mult = 2.2; // Regular exploded view
       
       gsap.to(mesh.position, {
         x: center.x * mult,
         y: center.y * mult,
         z: center.z * mult,
-        duration: 1,
-        ease: "power4.out"
+        duration: 1.4,
+        ease: "power4.inOut"
       });
 
+      // Independent rotation for deconstruction
       gsap.to(mesh.rotation, {
-        x: isDecon ? (Math.random() - 0.5) * Math.PI : 0,
-        y: isDecon ? (Math.random() - 0.5) * Math.PI : 0,
-        duration: 1.2
+        x: isDecon ? (Math.random() - 0.5) * Math.PI * 2 : 0,
+        y: isDecon ? (Math.random() - 0.5) * Math.PI * 2 : 0,
+        z: isDecon ? (Math.random() - 0.5) * Math.PI * 2 : 0,
+        duration: 1.6,
+        ease: "expo.out"
       });
     });
 
@@ -136,43 +156,69 @@ const CoreGeometry: React.FC<CoreGeometryProps> = ({ exploded, activeSection, ho
         mainGroupRef.current.rotation.z += 0.02;
       }
     }
+
+    // Floating deconstruction drift
+    if (activeSection === '02') {
+      faceRefs.current.forEach((mesh, i) => {
+        if (!mesh) return;
+        const time = state.clock.getElapsedTime();
+        const { randomAxis } = faceMeshes[i];
+        
+        // Add subtle floating oscillation
+        mesh.position.x += Math.sin(time * 0.5 + i) * 0.002;
+        mesh.position.y += Math.cos(time * 0.4 + i) * 0.002;
+        mesh.position.z += Math.sin(time * 0.3 + i) * 0.002;
+        
+        // Continuous independent rotation
+        mesh.rotateOnAxis(randomAxis, 0.005);
+      });
+    }
   });
 
   return (
     <group ref={mainGroupRef}>
       {/* Dynamic Icosahedron Core */}
       <group ref={icosahedronRef}>
-        {faceMeshes.map((data, i) => (
-          <mesh 
-            key={i} 
-            ref={el => faceRefs.current[i] = el!} 
-            geometry={data.geometry} 
-            position={[data.center.x, data.center.y, data.center.z]}
-            onPointerOver={() => onHover(`face_${i}`)}
-            onPointerOut={() => onHover(null)}
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-          >
-            <primitive object={activeSection === '03' ? iridescentMat : glassMat} attach="material" />
-            
-            {/* Structural Edge Overlay */}
-            <mesh geometry={data.geometry}>
-              <meshBasicMaterial 
-                color={activeSection === '04' ? "#ff00ff" : "#ffffff"} 
-                wireframe 
-                transparent 
-                opacity={activeSection === '01' ? 1 : 0.4} 
-              />
-            </mesh>
+        {faceMeshes.map((data, i) => {
+          const isFaceHovered = hoveredPart === `face_${i}`;
+          
+          // FIX: Explicitly typing activeMat to avoid 'MeshStandardMaterial is not assignable to MeshPhysicalMaterial' errors.
+          let activeMat: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial = glassMat;
+          if (activeSection === '02') activeMat = deconMat;
+          else if (activeSection === '03') activeMat = iridescentMat;
 
-            {/* Street Mode Decals */}
-            {activeSection === '04' && i % 4 === 0 && (
-              <mesh position={[0, 0, 0.02]} scale={0.6}>
-                <planeGeometry args={[1, 1]} />
-                <meshBasicMaterial color="#ffff00" transparent opacity={0.9} />
+          return (
+            <mesh 
+              key={i} 
+              ref={el => faceRefs.current[i] = el!} 
+              geometry={data.geometry} 
+              position={[data.center.x, data.center.y, data.center.z]}
+              onPointerOver={() => onHover(`face_${i}`)}
+              onPointerOut={() => onHover(null)}
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+            >
+              <primitive object={activeMat} attach="material" />
+              
+              {/* Structural Edge Overlay */}
+              <mesh geometry={data.geometry}>
+                <meshBasicMaterial 
+                  color={isFaceHovered ? "#ffffff" : (activeSection === '02' ? "#000000" : activeSection === '04' ? "#ff00ff" : "#ffffff")} 
+                  wireframe 
+                  transparent 
+                  opacity={isFaceHovered ? 1.0 : (activeSection === '01' ? 1 : 0.4)} 
+                />
               </mesh>
-            )}
-          </mesh>
-        ))}
+
+              {/* Street Mode Decals */}
+              {activeSection === '04' && i % 4 === 0 && (
+                <mesh position={[0, 0, 0.02]} scale={0.6}>
+                  <planeGeometry args={[1, 1]} />
+                  <meshBasicMaterial color="#ffff00" transparent opacity={0.9} />
+                </mesh>
+              )}
+            </mesh>
+          );
+        })}
       </group>
 
       {/* Structural Shift Mesh */}
